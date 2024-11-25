@@ -1,14 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Pokemon } from './entities/pokemon.entity';
 import { RedisService } from '../redis/redis.service';
-import { CreatePokemonDto, UpdatePokemonDto } from './dto';
+import { fetchPokemonData, fetchSpeciesData, fetchCharacteristics, getPokemonFields } from './pokemon.helpers';
+import { POKEMON_FETCH_FAIL, POKEMON_NOT_FOUND, REDIS_TTL } from 'src/constants';
 
 @Injectable()
 export class PokemonService {
-  private readonly cacheExpiry = 3600;
-
   constructor(
     @InjectRepository(Pokemon)
     private readonly pokemonRepository: Repository<Pokemon>,
@@ -16,71 +15,99 @@ export class PokemonService {
   ) {}
 
   async getAllPokemon(): Promise<Pokemon[]> {
-    const cacheKey = 'pokemon:all';
-    const cachedData = await this.redisService.getCache(cacheKey);
-
-    if (cachedData) {
-      return JSON.parse(cachedData);
+    const cacheKey = 'all_pokemon';
+  
+    const cachedPokemon = await this.redisService.getCache(cacheKey);
+    if (cachedPokemon) {
+      return JSON.parse(cachedPokemon);
     }
-
-    const pokemons = await this.pokemonRepository.find();
-    await this.redisService.setCache(cacheKey, JSON.stringify(pokemons), this.cacheExpiry);
-
-    return pokemons;
+  
+    const allPokemon = await this.pokemonRepository.find();
+    if (!allPokemon) {
+      throw new Error(POKEMON_NOT_FOUND);
+    }
+  
+    await this.redisService.setCache(cacheKey, JSON.stringify(allPokemon), REDIS_TTL);
+  
+    return allPokemon;
   }
+  
 
-  async getPokemonById(id: number): Promise<Pokemon> {
-    const cacheKey = `pokemon:${id}`;
-    const cachedData = await this.redisService.getCache(cacheKey);
+  async getPokemonById(pokemonId: number): Promise<Pokemon> {
+    const cacheKey = `pokemon:${pokemonId}`;
 
-    if (cachedData) {
-      return JSON.parse(cachedData);
+    const cachedPokemon = await this.redisService.getCache(cacheKey);
+    if (cachedPokemon) {
+      return JSON.parse(cachedPokemon);
     }
 
-    const pokemon = await this.pokemonRepository.findOneBy({ id });
-
+    let pokemon = await this.pokemonRepository.findOne({ where: { cybereason_pokemon_id: pokemonId } });
     if (!pokemon) {
-      throw new NotFoundException(`Pokemon with ID ${id} not found`);
+      const [pokemonData, speciesData, characteristicsResult] = await Promise.allSettled([
+        fetchPokemonData(pokemonId),
+        fetchSpeciesData(pokemonId),
+        fetchCharacteristics(pokemonId),
+      ]);
+
+      if (pokemonData.status === 'fulfilled' && speciesData.status === 'fulfilled') {
+
+        const { name, types, eggGroups, characteristics } = getPokemonFields(pokemonData.value, speciesData.value, characteristicsResult)
+
+          pokemon = this.pokemonRepository.create({
+            cybereason_pokemon_id: pokemonId,
+            cybereason_nickname: name,
+            name,
+            types,
+            egg_groups: eggGroups,
+            characteristics: characteristics
+              ? {
+                  gene_modulo: characteristics.gene_modulo,
+                  description: characteristics.description,
+                }
+              : null
+          });
+          
+          
+
+        await this.pokemonRepository.save(pokemon);
+      } else {
+        throw new Error(POKEMON_FETCH_FAIL);
+      }
     }
 
-    await this.redisService.setCache(cacheKey, JSON.stringify(pokemon), this.cacheExpiry);
+    await this.redisService.setCache(cacheKey, JSON.stringify(pokemon), REDIS_TTL);
 
     return pokemon;
   }
 
-  async createPokemon(createPokemonDto: CreatePokemonDto): Promise<Pokemon> {
-    const newPokemon = this.pokemonRepository.create(createPokemonDto);
-    const savedPokemon = await this.pokemonRepository.save(newPokemon);
-
-    await this.redisService.deleteCache('pokemon:all');
-
-    return savedPokemon;
-  }
-
-  async updatePokemon(id: number, updateData: UpdatePokemonDto): Promise<Pokemon> {
-    const pokemon = await this.getPokemonById(id);
-
-    Object.assign(pokemon, updateData);
-    const updatedPokemon = await this.pokemonRepository.save(pokemon);
-
-    await this.redisService.setCache(
-      `pokemon:${id}`,
-      JSON.stringify(updatedPokemon),
-      this.cacheExpiry,
-    );
-    await this.redisService.deleteCache('pokemon:all');
-
-    return updatedPokemon;
-  }
-
-  async deletePokemon(id: number): Promise<void> {
-    const result = await this.pokemonRepository.delete(id);
-
-    if (result.affected === 0) {
-      throw new NotFoundException(`Pokemon with ID ${id} not found`);
+  async updateNickname(pokemonId: number, newNickname: string): Promise<Pokemon> {
+    const pokemon = await this.getPokemonById(pokemonId);
+    if (!pokemon) {
+        throw new Error(`${POKEMON_NOT_FOUND}: ${pokemonId}`);
     }
 
-    await this.redisService.deleteCache(`pokemon:${id}`);
-    await this.redisService.deleteCache('pokemon:all');
+    pokemon.cybereason_nickname = newNickname;
+    await this.pokemonRepository.save(pokemon);
+
+    const cacheKey = `pokemon:${pokemonId}`;
+    await this.redisService.setCache(cacheKey, JSON.stringify(pokemon), 3600);
+
+    return pokemon;
   }
+
+  async deletePokemon(pokemonId: number): Promise<boolean> {
+    const pokemon = await this.pokemonRepository.findOne({
+        where: { id: pokemonId },
+      });
+    if (!pokemon) {
+        throw new Error(`${POKEMON_NOT_FOUND}: ${pokemonId}`);
+    }
+
+    await this.redisService.deleteCache(`pokemon:${pokemonId}`);
+
+    await this.pokemonRepository.remove(pokemon);
+
+    return true;
+  }
+
 }
