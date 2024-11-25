@@ -10,12 +10,10 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit() {
     this.redisClient = this.nestRedisService.getOrThrow('default');
-    console.log('RedisService: Connected to Redis');
   }
 
   async onModuleDestroy() {
     await this.redisClient.quit();
-    console.log('RedisService: Disconnected from Redis');
   }
 
   async setCache(key: string, value: string, ttl: number): Promise<void> {

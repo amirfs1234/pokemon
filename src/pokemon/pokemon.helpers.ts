@@ -1,5 +1,8 @@
 import axios from 'axios';
-import { POKEMON_API_BASE } from 'src/constants';
+import { ALL_POKEMON_REDIS_CACHE_KEY, POKEMON_API_BASE, REDIS_TTL } from 'src/constants';
+import { Pokemon } from './entities/pokemon.entity';
+import { RedisService } from '../redis/redis.service';
+
 
 export async function fetchPokemonData(pokemonId: number): Promise<any> {
   const response = await axios.get(`${POKEMON_API_BASE}/pokemon/${pokemonId}/`);
@@ -30,8 +33,8 @@ function extractEggGroups(speciesData: any): string[] {
 }
 
 export function getPokemonFields(pokemonData, speciesData, characteristicsResult) {
-    const { name, types } = pokemonData.value;
-    const eggGroups = extractEggGroups(speciesData.value);
+    const { name, types } = pokemonData;
+    const eggGroups = extractEggGroups(speciesData);
     const characteristics =
       characteristicsResult.status === 'fulfilled' ? characteristicsResult.value : null;
 
@@ -42,3 +45,29 @@ export function getPokemonFields(pokemonData, speciesData, characteristicsResult
         characteristics
     }
 }
+
+export async function handleAllRedisSettingsForPokemon(pokemon, cacheKey: string, redisService: RedisService, update?: boolean): Promise<void> {
+    await redisService.setCache(cacheKey, JSON.stringify(pokemon), REDIS_TTL);
+
+    const allPokemonCache = await redisService.getCache(ALL_POKEMON_REDIS_CACHE_KEY);
+    let allPokemon: Pokemon[] = [];
+
+    if (allPokemonCache) {
+        allPokemon = JSON.parse(allPokemonCache);
+    }
+    if(update) {
+        const pokemonIndex = allPokemon.findIndex(
+            (pokemonToSearch) => pokemonToSearch.id === pokemon.id,
+          );
+          if (pokemonIndex !== -1) {
+            allPokemon[pokemonIndex].cybereason_nickname = pokemon.cybereason_nickname;
+            redisService.setCache(ALL_POKEMON_REDIS_CACHE_KEY, JSON.stringify(allPokemon), REDIS_TTL);
+            return;
+          }
+    }
+    
+    allPokemon.push(pokemon);
+
+    redisService.setCache(ALL_POKEMON_REDIS_CACHE_KEY, JSON.stringify(allPokemon), REDIS_TTL);
+
+  }

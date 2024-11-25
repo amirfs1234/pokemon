@@ -10,7 +10,8 @@ import {
     HttpStatus,
   } from '@nestjs/common';
   import { PokemonService } from './pokemon.service';
-  import { CreatePokemonDto, UpdatePokemonDto } from './dto';
+  import { UpdatePokemonDto } from './dto';
+import { POKEMON_NOT_FOUND } from 'src/constants';
   
   @Controller('pokemon')
   export class PokemonController {
@@ -45,7 +46,7 @@ import {
       try {
         const updatedPokemon = await this.pokemonService.updateNickname(
           id,
-          updatePokemonDto.name,
+          updatePokemonDto.cybereason_nickname,
         );
         if (!updatedPokemon) {
           throw new HttpException('Pokémon not found', HttpStatus.NOT_FOUND);
@@ -68,9 +69,10 @@ import {
         }
         return { message: 'Pokémon deleted successfully' };
       } catch (error) {
+        const status = error.message.includes(POKEMON_NOT_FOUND) ? HttpStatus.BAD_REQUEST : HttpStatus.INTERNAL_SERVER_ERROR
         throw new HttpException(
           error.message,
-          error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+          status
         );
       }
     }

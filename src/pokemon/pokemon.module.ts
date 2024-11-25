@@ -4,15 +4,15 @@ import { HttpModule } from '@nestjs/axios';
 import { PokemonService } from './pokemon.service';
 import { PokemonController } from './pokemon.controller';
 import { Pokemon } from './entities/pokemon.entity';
-import { RedisService } from '../redis/redis.service'; // Use your custom RedisService
+import { RedisService } from '../redis/redis.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Pokemon]), // Register Pokemon repository
+    TypeOrmModule.forFeature([Pokemon]),
     HttpModule,
   ],
-  providers: [PokemonService, RedisService], // Provide your custom RedisService here
+  providers: [PokemonService, RedisService],
   controllers: [PokemonController],
-  exports: [TypeOrmModule], // Export TypeOrmModule if needed by other modules
+  exports: [TypeOrmModule],
 })
 export class PokemonModule {}

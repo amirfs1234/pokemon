@@ -8,12 +8,10 @@ import { PokemonModule } from './pokemon/pokemon.module';
 
 @Module({
   imports: [
-    // Load environment variables globally
     ConfigModule.forRoot({
       isGlobal: true,
     }),
 
-    // Database configuration using TypeORM
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
@@ -24,26 +22,25 @@ import { PokemonModule } from './pokemon/pokemon.module';
         password: configService.get<string>('DATABASE_PASSWORD'),
         database: configService.get<string>('DATABASE_NAME'),
         autoLoadEntities: true,
-        synchronize: true, // Only for development, disable in production
+        synchronize: configService.get<string>('NODE_ENV') === 'development',
       }),
       inject: [ConfigService],
     }),
 
-    // Redis configuration for caching
+
     RedisModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
         config: {
-          name: 'default', // Default Redis client
+          name: 'default', 
           host: configService.get<string>('REDIS_HOST', 'localhost'),
           port: configService.get<number>('REDIS_PORT', 6379),
-          password: configService.get<string>('REDIS_PASSWORD'), // Optional
+          password: configService.get<string>('REDIS_PASSWORD'),
         },
       }),
       inject: [ConfigService],
     }),
 
-    // Application modules
     UserModule,
     AuthModule,
     PokemonModule,

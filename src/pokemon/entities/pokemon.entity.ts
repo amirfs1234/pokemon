@@ -1,12 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Entity, PrimaryColumn, Column } from 'typeorm';
 
 @Entity()
 export class Pokemon {
-  @PrimaryGeneratedColumn()
+  @PrimaryColumn()
   id: number;
-
-  @Column()
-  cybereason_pokemon_id: number;
 
   @Column()
   cybereason_nickname: string;
