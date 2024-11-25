@@ -1,5 +1,6 @@
 import { Controller, Post, Body } from '@nestjs/common';
 import { UserService } from './user.service';
+import { LOGIN_SUCCESSFUL, REGISTRATION_SUCCESSFUL } from 'src/constants';
 
 @Controller('users')
 export class UserController {
@@ -11,7 +12,7 @@ export class UserController {
     @Body('password') password: string,
   ) {
     const user = await this.userService.createUser(email, password);
-    return { message: 'Registration successful', userId: user.id };
+    return { message: REGISTRATION_SUCCESSFUL };
   }
 
   @Post('login')
@@ -23,6 +24,6 @@ export class UserController {
     if (!user) {
       return { message: 'Invalid credentials' };
     }
-    return { message: 'Login successful', user }; 
+    return { message: LOGIN_SUCCESSFUL }; 
   }
 }

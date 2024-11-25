@@ -1,19 +1,23 @@
+// src/pokemon/entities/pokemon.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 
 @Entity()
 export class Pokemon {
   @PrimaryGeneratedColumn()
-  id: number;
+  id: number; // Internal database ID
 
   @Column()
-  name: string;
+  cybereason_pokemon_id: number; // Internal unique ID for Pokémon
 
   @Column()
-  type: string;
-
-  @Column('text', { array: true }) // PostgreSQL array column
-  abilities: string[];
+  cybereason_nickname: string; // Pokémon's nickname, defaults to its name
 
   @Column()
-  level: number;
+  name: string; // Original Pokémon name
+
+  @Column('simple-array', { nullable: true })
+  egg_groups: string[]; // List of egg groups (e.g., 'monster', 'dragon')
+
+  @Column('json', { nullable: true })
+  characteristics: { gene_modulo: number; description: string } | null; // Pokémon characteristics
 }
