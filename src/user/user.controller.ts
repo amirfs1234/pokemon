@@ -1,6 +1,6 @@
 import { Controller, Post, Body } from '@nestjs/common';
 import { UserService } from './user.service';
-import { LOGIN_SUCCESSFUL, REGISTRATION_SUCCESSFUL } from 'src/constants';
+import { LOGIN_SUCCESSFUL, REGISTRATION_SUCCESSFUL, USER_EXISTS } from 'src/constants';
 
 @Controller('users')
 export class UserController {
@@ -11,7 +11,10 @@ export class UserController {
     @Body('email') email: string,
     @Body('password') password: string,
   ) {
-    const user = await this.userService.createUser(email, password);
+    const userExists = await this.userService.createUser(email, password);
+    if(userExists) {
+      return { message: USER_EXISTS };
+    }
     return { message: REGISTRATION_SUCCESSFUL };
   }
 

@@ -12,7 +12,12 @@ export class UserService {
     private readonly userRepository: Repository<User>,
   ) {}
 
-  async createUser(email: string, password: string): Promise<User> {
+  async createUser(email: string, password: string): Promise<User | boolean> {
+    const userExists = await this.findByEmail(email);
+    if (userExists) {
+      return true;
+    }
+
     const hashedPassword = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
     const user = this.userRepository.create({ email, password: hashedPassword });
     return this.userRepository.save(user);

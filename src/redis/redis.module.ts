@@ -3,6 +3,6 @@ import { RedisService } from './redis.service';
 
 @Module({
   providers: [RedisService],
-  exports: [RedisService], // Exporting for use in other modules
+  exports: [RedisService],
 })
 export class RedisModule {}
