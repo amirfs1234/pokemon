@@ -1,4 +1,3 @@
-# Step 1: Build the application
 FROM node:20 AS builder
 
 WORKDIR /app
@@ -9,7 +8,6 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-# Step 2: Production-ready image
 FROM node:20 AS production
 
 WORKDIR /app
