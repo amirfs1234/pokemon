@@ -1,6 +1,6 @@
-#Cybereason Pokemon App!
+#Cybereason Pokemon App!#
 
-###This is a basic application to register and login users, and get, update, and delete pokemon.
+###This is a basic application to register and login users, and get, update, and delete pokemon.###
 
 There are many optimizations that could be made, such as:
 1. Adding status codes in all places that require it (my application only has it in some of the places)
